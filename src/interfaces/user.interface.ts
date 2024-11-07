@@ -6,3 +6,13 @@
     createdAt: Date;
     disconnectedAt?: Date;
 }
+export type UserWithoutGroupsAndTags = Omit<User, 'groups' | 'tags'>;
+export interface PaginatedUsers {
+    users: UserWithoutGroupsAndTags[];
+    metadata: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        hasMore: boolean;
+    }
+}

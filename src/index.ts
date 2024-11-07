@@ -13,6 +13,8 @@ import { RedisClient } from './redis/RedisClient';
 import { UserRepository } from './core/users/UserRepository';
 import { GroupRepository } from './core/groups/GroupRepository';
 import { GroupMembershipRepository } from './core/groups/GroupMembershipRepository';
+import { AdminController } from './api/controllers/admin.controller';
+// import { TagManager } from './core/tags/TagManager';
 
 export interface BlinkOptions {
     server: HttpServer | HttpsServer;
@@ -49,6 +51,8 @@ export class Blink {
     private groupManager!: GroupManager;
     private messageRouter!: MessageRouter;
     private connectionManager!: ConnectionManager;
+    private adminController!: AdminController;
+    // private tagManager!: TagManager;
 
     constructor(private options: BlinkOptions) {
         // Initialize Redis and wait for connection
@@ -86,6 +90,7 @@ export class Blink {
         const groupMembershipRepository = new GroupMembershipRepository(this.redisClient);
         this.userManager = new UserManager(userRepository);
         this.groupManager = new GroupManager(this.options.group || {} as GroupConfig, groupRepository, groupMembershipRepository);
+        // this.tagManager = new TagManager(this.redisClient);
         this.messageRouter = new MessageRouter(this.io, this.groupManager, this.userManager);   
         this.connectionManager = new ConnectionManager(
             this.io, 
@@ -93,6 +98,12 @@ export class Blink {
             authenticator, 
             userRepository, 
             this.groupManager
+        );
+
+        // Initialize controllers
+        this.adminController = new AdminController(
+            // this.tagManager,
+            this.userManager
         );
     }
 
@@ -161,6 +172,13 @@ export class Blink {
         // Close connections
         await this.redisClient.disconnect();
         this.io.close();
+    }
+
+    /**
+     * Get admin controller instance
+     */
+    public getAdminController(): AdminController {
+        return this.adminController;
     }
 }
 

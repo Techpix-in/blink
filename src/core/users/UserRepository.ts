@@ -1,8 +1,7 @@
 import { BaseRedisRepository } from '../../redis/BaseRedisRepository';
 
 import logger from '../../utils/logger';
-import { User } from '@/interfaces/user.interface';
-import { UserWithoutGroupsAndTags } from '@/types/user';
+import { PaginatedUsers, User, UserWithoutGroupsAndTags } from '@/interfaces/user.interface';
 import { cli } from 'winston/lib/winston/config';
 
 
@@ -228,7 +227,7 @@ export class UserRepository extends BaseRedisRepository {
      * Returns a map of userIds to tags
     */
     async getBulkUserTags(userIds: string[]): Promise<Record<string, string[]>> {
-        console.log(`Getting tags for ${userIds} users`);
+        logger.debug(`Getting tags for ${userIds} users`);
         if (userIds.length === 0) return {};
         // Add all SMEMBERS commands to pipeline
         const pipeline = this.redisClient.getClient().multi();
@@ -247,6 +246,79 @@ export class UserRepository extends BaseRedisRepository {
             }
             return acc;
         }, {} as Record<string, string[]>);
+    }
+
+    async listUsers(page: number = 1, limit: number = 10): Promise<PaginatedUsers> {
+        try {
+            const client = this.getClient();
+            const pattern = this.getKey('user', '*');
+            const offset = (page - 1) * limit;
+            
+            // First, get total count for pagination metadata
+            const totalCount = await client.keys(pattern).then(keys => keys.length);
+            
+            // Use SCAN to get paginated keys
+            let cursor = 0;
+            let keys: string[] = [];
+            let skippedCount = 0;
+            
+            do {
+                const res = await client.scan(cursor, {
+                    MATCH: pattern,
+                    COUNT: Math.max(300, offset + limit) // Ensure batch size is large enough
+                });
+                
+                cursor = res.cursor;
+                
+                // Skip keys before offset
+                if (skippedCount < offset) {
+                    const keysToSkip = Math.min(res.keys.length, offset - skippedCount);
+                    skippedCount += keysToSkip;
+                    res.keys.splice(0, keysToSkip);
+                }
+                
+                // Collect keys for current page
+                if (skippedCount >= offset) {
+                    keys = keys.concat(res.keys);
+                }
+                
+                // Stop if we have enough keys
+                if (keys.length >= limit) {
+                    keys = keys.slice(0, limit); // Ensure we don't exceed limit
+                    break;
+                }
+            } while (cursor !== 0);
+            
+            // Slice keys for current page
+            const pageKeys = keys.slice(offset, offset + limit);
+            
+            // Fetch user data in parallel
+            const pipeline = client.multi();
+            keys.forEach(key => {
+                pipeline.hGetAll(key);
+            });
+            
+            const usersData = await pipeline.execAsPipeline();
+            // const userMap = usersData.reduce((acc, result, index) => {
+            //     acc[keys[index]] = result ?this.deserializeUser(result as unknown as Record<string, string>) : null;
+            //     return acc;
+            // }, {} as Record<string, UserWithoutGroupsAndTags | null>);
+            const users = usersData.map(
+                result => result ?this.deserializeUser(result as unknown as Record<string, string>) : null
+            ).filter(user => user !== null)
+            return {
+                users,
+                metadata: {
+                    page,
+                    limit,
+                    totalCount,
+                    hasMore: totalCount > (offset + users.length)
+                }
+            };
+        } catch (error) {
+            logger.error('Failed to list users:', error instanceof Error ? error.stack : error);
+            throw error;
+        }
     }
 
 } 

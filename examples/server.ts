@@ -14,7 +14,7 @@ app.post('/auth', (req: Request, res: Response) => {
         success: true,
         data: {
             client_identifier: '123',
-            permissions: ['backend','developer'],
+            permissions: ['can_create_order','can_udpate_order','can_fetch_order'],
             groups: ['1']
         }
     });
@@ -47,6 +47,12 @@ const blink = new Blink({
     }
 });
 
+// Setup admin routes
+const adminController = blink.getAdminController();
+
+app.get('/admin/users', (req, res) => blink.getAdminController().listUsers(req, res));
+// Add other admin routes as needed
+
 httpServer.listen(3000, () => {
     console.log('Server running on port 3000');
 });
@@ -56,8 +62,18 @@ setInterval(() => {
     blink.sendMessage({
         groupId: '1',
         event: 'update',
-        data: {timestamp: Date.now()},
-        tags: ['backend'],
+        data: {timestamp: Date.now(), "type": "backend"},
+        tags: ['can_create_order','can_fetch_order'],
+        requireAck: false
+    }).catch(console.error);
+}, 2000);
+
+setInterval(() => {
+    blink.sendMessage({
+        groupId: '1',
+        event: 'update',
+        data: {timestamp: Date.now(), "type": "frontend"},
+        tags: ['can_delete_order'],
         requireAck: false
     }).catch(console.error);
 }, 2000); 

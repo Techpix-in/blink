@@ -1,6 +1,6 @@
 import logger from '../../utils/logger';
 
-import { UserWithoutGroupsAndTags } from '@/types/user';
+import { PaginatedUsers, UserWithoutGroupsAndTags } from '../../interfaces/user.interface';
 import { UserRepository } from './UserRepository';
 import { User } from '@/interfaces/user.interface';
 
@@ -14,16 +14,15 @@ export class UserManager {
     }
 
     //TODO: implement user listing for admin api
-    // async listUsers(page: number, limit: number): Promise<{ users: User[]; total: number }> {
-    //     try {
-    //         const users = await this.storage.listUsers(page, limit);
-    //         const total = await this.storage.getUserCount();
-    //         return { users, total };
-    //     } catch (error) {
-    //         logger.error('Failed to list users:', error);
-    //         throw error;
-    //     }
-    // }
+    async listUsers(page: number, limit: number): Promise<PaginatedUsers> {
+        try {
+            const users = await this.userRepository.listUsers(page, limit);
+            return users;
+        } catch (error) {
+            logger.error('Failed to list users:', error);
+            throw error;
+        }
+    }
 
     getUserChannelKey(userId: string): string {
         return this.userRepository.getUserChannelKey(userId);

@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { Message } from '@/interfaces/message.interface';
 import { GroupManager } from '@/core/groups/GroupManager';
 import { UserManager } from '../users/UserManager';
+import logger from '../../utils/logger';
 
 export class MessageRouter {
     constructor(
@@ -27,7 +28,7 @@ export class MessageRouter {
             const groupChannel = this.groupManager.getGroupChannelKey(groupId);
             const sockets = await this.io.in(groupChannel).fetchSockets();
             const clientIds = sockets.map(socket => socket.id);
-            console.log(`Sending message to ${clientIds.length} clients in group ${groupId}`);
+            logger.debug(`Sending message to ${clientIds.length} clients in group ${groupId}`);
             if (clientIds.length <= 0){
                 console.log(`No clients found in group ${groupId}`);
                 return;
@@ -45,7 +46,7 @@ export class MessageRouter {
             const emitPromises = sockets.map(async (socket) => {
                 const clientId = socket.id;
                 const clientUser = clientUsers[clientId];
-                console.log(`Client ${clientId} for user ${clientUser?.identifier} found in group ${groupId}`);
+                logger.debug(`Client ${clientId} for user ${clientUser?.identifier} found in group ${groupId}`);
                 if (!clientUser) return;
 
                 if (this.isMessageEligibleForClient(

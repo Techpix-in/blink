@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { WebhookAuthenticator } from '../authentication/WebhookAuthenticator';
 import { ConnectedClient } from '@/types/client';
-import { UserWithoutGroupsAndTags } from '@/types/user';
+import { UserWithoutGroupsAndTags } from '@/interfaces/user.interface';
 import { GroupManager } from '../groups/GroupManager';
 import { ConnectionConfig } from '@/config/app.config';
 import { UserRepository } from '../users/UserRepository';
